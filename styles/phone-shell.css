@@ -121,12 +121,15 @@
 .phone-shell {
   position: relative;
   width: var(--phone-screen-width);
+  /* 增加 min-height 兜底，防止高度计算为 0 */
+  min-height: 100dvh;
   height: var(--phone-screen-height);
   display: flex;
   flex-direction: column;
   border-radius: var(--phone-screen-radius);
   background: #ffffff;
-  overflow: hidden;
+  /* 竖屏时允许内容溢出，由内部 .phone-workspace 控制滚动 */
+  overflow: visible;
   padding: 12px;
   isolation: isolate;
 }
@@ -273,10 +276,15 @@
   display: flex;
   flex-direction: column;
   z-index: 2;
-  overflow: hidden;
+  /* 强制开启滚动：竖屏高度不足时内容可上下滑动，避免大片空白且无法滚动 */
+  overflow-y: auto;
+  overflow-x: hidden;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* 优化滚动性能 */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 /* 仅桌面态外扩吃掉壳的 12px 内边距：图标/组件的投影原本渗入内边距区、
    在工作区 overflow 裁剪边上被生硬截断，形成一条纵向"背景接缝"。外扩后
@@ -1085,20 +1093,31 @@
 
   :root {
     --phone-screen-width: 100vw;
-    --phone-screen-height: 100lvh;
+    /* 使用 100dvh (dynamic viewport height) 替代 100lvh
+       dvh 会动态适应地址栏/键盘变化，兼容性优于 lvh
+       降级方案：fallback 到 100vh */
+    --phone-screen-height: 100dvh;
+  }
+
+  /* 如果浏览器不支持 dvh，回退到 100vh
+     这能解决 Chrome 99 等旧版 WebView 的兼容问题 */
+  @supports not (height: 100dvh) {
+    :root {
+      --phone-screen-height: 100vh;
+    }
   }
 
   html,
   body {
     overflow: hidden;
     width: 100%;
-    height: 100lvh;
+    height: 100dvh;
     background: var(--c-page-body-bg);
   }
 
   .app-root {
     width: 100vw;
-    height: 100lvh;
+    height: 100dvh;
     padding: 0;
     display: flex;
     justify-content: flex-start;
@@ -1157,7 +1176,7 @@
 
   .app-root.splash-root {
     width: 100vw;
-    height: 100lvh;
+    height: 100dvh;
     margin: 0;
     padding: 0;
     display: flex;
@@ -1457,4 +1476,21 @@
 }
 .folder-dots .dot.active {
   background: color-mix(in srgb, var(--c-home-label, #ffffff) 85%, transparent);
+}
+
+/* 极端兜底：强制竖屏时手机壳高度等于视口高度，确保内容完整可见 */
+@media (max-width: 500px) and (orientation: portrait) {
+  .phone-shell-wrap {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+  }
+
+  .phone-shell {
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  .phone-workspace {
+    overflow-y: scroll !important; /* 强制开启滚动条 */
+  }
 }
